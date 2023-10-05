@@ -4,14 +4,12 @@
 #ifndef _LINK_LAYER_H_
 #define _LINK_LAYER_H_
 
-typedef enum
-{
+typedef enum {
     LlTx,
     LlRx,
 } LinkLayerRole;
 
-typedef struct
-{
+typedef struct {
     char serialPort[50];
     LinkLayerRole role;
     int baudRate;
