@@ -32,6 +32,7 @@ typedef struct {
     int count;
     int timeout;
     int num_retransmissions;
+    void (*handler)(int signo); // probably not needed
 } alarm_t;
 
 int send_supervision_frame(int fd, uint8_t address, uint8_t control);

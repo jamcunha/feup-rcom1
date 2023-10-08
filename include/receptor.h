@@ -7,4 +7,6 @@ int close_receptor();
 
 int connect_receptor();
 
+int disconnect_receptor();
+
 #endif // _EMISSOR_H_

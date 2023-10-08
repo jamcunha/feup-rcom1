@@ -54,13 +54,20 @@ int llread(unsigned char *packet) {
 
 int llclose(int showStatistics) {
     // TODO find what is the statistics
-    // temporary code: do proper closing (send DISC, receive DISC, send UA)
 
     if (role == LlTx) {
+        if (disconnect_trasmitter()) {
+            return -1;
+        }
+
         if (close_transmitter()) {
             return -1;
         }
     } else if (role == LlRx) {
+        if (disconnect_receptor()) {
+            return -1;
+        }
+
         if (close_receptor()) {
             return -1;
         }

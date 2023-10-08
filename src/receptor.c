@@ -62,3 +62,16 @@ int connect_receptor() {
 
     return 0;
 }
+
+int disconnect_receptor() {
+    while (read_supervision_frame(receptor.fd, TX_ADDRESS, DISC_CONTROL) != 0) {}
+
+    // ask if this have timeouts
+    if (send_supervision_frame(receptor.fd, RX_ADDRESS, DISC_CONTROL)) {
+        return 1;
+    }
+
+    while (read_supervision_frame(receptor.fd, TX_ADDRESS, UA_CONTROL) != 0) {}
+
+    return 0;
+}

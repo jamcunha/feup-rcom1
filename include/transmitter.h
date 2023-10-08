@@ -7,4 +7,6 @@ int close_transmitter();
 
 int connect_trasmitter();
 
+int disconnect_trasmitter();
+
 #endif // _TRANSMITTER_H_
