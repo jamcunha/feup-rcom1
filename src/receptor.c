@@ -7,7 +7,7 @@
 #include <termios.h>
 #include <unistd.h>
 
-#include "frame_utils.h"
+#include "common.h"
 
 struct {
     int fd;
@@ -52,20 +52,13 @@ int close_receptor() {
     return 0;
 }
 
-int receivedSET() {
-    return read_supervision_frame(receptor.fd, TX_ADDRESS, SET_CONTROL);
-}
+int connect_receptor() {
+    // ask teacher if receiver is supposed to wait forever
+    while (read_supervision_frame(receptor.fd, TX_ADDRESS, SET_CONTROL) != 0) {}
 
-int sendUA() {
-    uint8_t* frame = build_supervision_frame(RX_ADDRESS, UA_CONTROL);
-
-    if (write(receptor.fd, frame, 5) != 5) {
+    if (send_supervision_frame(receptor.fd, RX_ADDRESS, UA_CONTROL)) {
         return 1;
     }
 
-    // Wait until all bytes have been written to the serial port
-    sleep(1);
-
-    free(frame);
     return 0;
 }

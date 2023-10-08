@@ -11,52 +11,19 @@
 // MISC
 #define _POSIX_SOURCE 1 // POSIX compliant source
 
-// TODO: REMOVE
-#include <stdio.h>
-
 LinkLayerRole role;
-
-int alarm_count = 0;
-int alarm_timeout = 0;
-void alarm_handler(int signo) {
-    alarm_count++;
-
-    sendSET();
-    alarm(alarm_timeout);
-
-    printf("Alarm #%d\n", alarm_count); // TODO: REMOVE
-}
 
 int llopen(LinkLayer connectionParameters) {
     if (connectionParameters.role == LlTx) {
-        if (open_transmitter(connectionParameters.serialPort, connectionParameters.baudRate)) {
+        if (open_transmitter(connectionParameters.serialPort,
+                    connectionParameters.baudRate,
+                    connectionParameters.timeout,
+                    connectionParameters.nRetransmissions)) {
             return -1;
         }
         role = LlTx;
 
-        // Setup alarm
-        alarm_timeout = connectionParameters.timeout;
-        (void)signal(SIGALRM, alarm_handler);
-
-        sendSET();
-        alarm(alarm_timeout);
-
-        int flag = FALSE;
-        while (TRUE) {
-            if (receivedUA() == 0) {
-                flag = TRUE;
-                break;
-            }
-
-            // Ask teacher if is 1st try + 3 alarm tries or 3 tries as a whole
-            if (alarm_count == connectionParameters.nRetransmissions) {
-                break;
-            }
-        }
-        alarm(0);
-
-        if (!flag) {
-            printf("UA not received\n"); // TODO: REMOVE
+        if (connect_trasmitter()) {
             return -1;
         }
     } else if (connectionParameters.role == LlRx) {
@@ -65,9 +32,7 @@ int llopen(LinkLayer connectionParameters) {
         }
         role = LlRx;
 
-        while (receivedSET() != 0) {}
-
-        if (sendUA()) {
+        if (connect_receptor()) {
             return -1;
         }
     }
@@ -89,6 +54,8 @@ int llread(unsigned char *packet) {
 
 int llclose(int showStatistics) {
     // TODO find what is the statistics
+    // temporary code: do proper closing (send DISC, receive DISC, send UA)
+
     if (role == LlTx) {
         if (close_transmitter()) {
             return -1;

@@ -5,8 +5,6 @@ int open_receptor(char* serial_port, int baudrate);
 
 int close_receptor();
 
-int receivedSET();
-
-int sendUA();
+int connect_receptor();
 
 #endif // _EMISSOR_H_

@@ -1,9 +1,9 @@
-#include "frame_utils.h"
+#include "common.h"
 
 #include <stdlib.h>
 #include <unistd.h>
 
-uint8_t* build_supervision_frame(uint8_t address, uint8_t control) {
+int send_supervision_frame(int fd, uint8_t address, uint8_t control) {
     uint8_t* frame = malloc(5 * sizeof(uint8_t));
 
     frame[0] = FLAG;
@@ -12,7 +12,15 @@ uint8_t* build_supervision_frame(uint8_t address, uint8_t control) {
     frame[3] = address ^ control;
     frame[4] = FLAG;
 
-    return frame;
+    if (write(fd, frame, 5) != 5) {
+        return 1;
+    }
+
+    // Wait untill all bytes have been written to the serial port
+    sleep(1);
+
+    free(frame);
+    return 0;
 }
 
 int read_supervision_frame(int fd, uint8_t address, uint8_t control) {
