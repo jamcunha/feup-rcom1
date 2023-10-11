@@ -1,6 +1,8 @@
 #ifndef _EMISSOR_H_
 #define _EMISSOR_H_
 
+// TODO: add timeouts to receptor
+
 int open_receptor(char* serial_port, int baudrate);
 
 int close_receptor();

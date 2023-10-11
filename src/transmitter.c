@@ -9,9 +9,6 @@
 
 #include "common.h"
 
-#define DATA_SIZE           256
-#define STUFFED_DATA_SIZE   (DATA_SIZE * 2 + 2)
-
 struct {
     int fd;
     struct termios oldtio, newtio;
@@ -19,6 +16,11 @@ struct {
 
 alarm_t alarm_config;
 int transmitter_num = 0;
+
+struct {
+    uint8_t buffer[DATA_SIZE];
+    size_t length;
+} data_holder;
 
 // remove magic numbers
 size_t stuff_data(const uint8_t* data, size_t length, uint8_t bcc2, uint8_t* stuffed_data) {
@@ -58,11 +60,38 @@ void handle_disc(int signo) {
     alarm(alarm_config.timeout);
 }
 
+void handle_packet(int signo) {
+    alarm_config.count++;
+    uint8_t frame_header[4] = {FLAG, TX_ADDRESS, I_CONTROL(transmitter_num), TX_ADDRESS ^ I_CONTROL(transmitter_num)};
+    uint8_t bcc2 = 0;
+
+    for (int i = 0; i < data_holder.length; i++) {
+        bcc2 ^= data_holder.buffer[i];
+    }
+
+    uint8_t stuffed_data[STUFFED_DATA_SIZE];
+    size_t stuffed_length = stuff_data(data_holder.buffer, data_holder.length, bcc2, stuffed_data);
+
+    uint8_t frame_trailer[1] = { FLAG };
+
+    if (write(transmitter.fd, frame_header, 4) != 4) {
+        return;
+    }
+
+    if (write(transmitter.fd, stuffed_data, stuffed_length) != stuffed_length) {
+        return;
+    }
+
+    if (write(transmitter.fd, frame_trailer, 1) != 1) {
+        return;
+    }
+    alarm(alarm_config.timeout);
+}
+
 int open_transmitter(char* serial_port, int baudrate, int timeout, int nRetransmissions) {
     alarm_config.count = 0;
     alarm_config.timeout = timeout;
     alarm_config.num_retransmissions = nRetransmissions;
-    alarm_config.handler = NULL;
 
     transmitter.fd = open(serial_port, O_RDWR | O_NOCTTY);
 
@@ -103,9 +132,7 @@ int close_transmitter() {
 }
 
 int connect_trasmitter() {
-    alarm_config.handler = handle_set;
-
-    (void)signal(SIGALRM, alarm_config.handler);
+    (void)signal(SIGALRM, handle_set);
     alarm_config.count = 0;
 
     if (send_supervision_frame(transmitter.fd, TX_ADDRESS, SET_CONTROL)) {
@@ -115,7 +142,7 @@ int connect_trasmitter() {
 
     int flag = 0;
     for (;;) {
-        if (read_supervision_frame(transmitter.fd, RX_ADDRESS, UA_CONTROL) == 0) {
+        if (read_supervision_frame(transmitter.fd, RX_ADDRESS, UA_CONTROL, NULL) == 0) {
             flag = 1;
             break;
         }
@@ -135,8 +162,7 @@ int connect_trasmitter() {
 }
 
 int disconnect_trasmitter() {
-    alarm_config.handler = handle_disc;
-    (void)signal(SIGALRM, alarm_config.handler);
+    (void)signal(SIGALRM, handle_disc);
     alarm_config.count = 0;
 
     if (send_supervision_frame(transmitter.fd, TX_ADDRESS, DISC_CONTROL)) {
@@ -146,7 +172,7 @@ int disconnect_trasmitter() {
 
     int flag = 0;
     for (;;) {
-        if (read_supervision_frame(transmitter.fd, RX_ADDRESS, DISC_CONTROL) == 0) {
+        if (read_supervision_frame(transmitter.fd, RX_ADDRESS, DISC_CONTROL, NULL) == 0) {
             flag = 1;
             break;
         }
@@ -168,12 +194,16 @@ int disconnect_trasmitter() {
     return 0;
 }
 
-#include <stdio.h>
 int send_packet(const unsigned char* packet, size_t length) {
     // TODO: maybe have a function to send a info frame
 
+    (void)signal(SIGALRM, handle_packet);
     alarm_config.count = 0;
 
+    data_holder.length = length;
+    memcpy(data_holder.buffer, packet, length);
+
+    // Think about removing this to its own function
     uint8_t frame_header[4] = {FLAG, TX_ADDRESS, I_CONTROL(transmitter_num), TX_ADDRESS ^ I_CONTROL(transmitter_num)};
     uint8_t bcc2 = 0;
 
@@ -197,19 +227,28 @@ int send_packet(const unsigned char* packet, size_t length) {
     if (write(transmitter.fd, frame_trailer, 1) != 1) {
         return 3;
     }
+    // ----------------------------------------
 
-    // just testing sending a packet
-    printf("Sent packet: ");
-    for (int i = 0; i < length; i++) {
-        printf("0x%02x ", packet[i]);
-    }
-    printf("\n");
+    alarm(alarm_config.timeout);
 
-    printf("Stuffed packet: ");
-    for (int i = 0; i < stuffed_length; i++) {
-        printf("0x%02x ", stuffed_data[i]);
+    uint8_t flag = 0;
+    uint8_t rej_ctrl = REJ_CONTROL(1 - transmitter_num);
+    for (;;) {
+        // is not reading any bytes
+        if (read_supervision_frame(transmitter.fd, RX_ADDRESS, RR_CONTROL(1 - transmitter_num), &rej_ctrl) == 0) {
+            flag = 1;
+            break;
+        }
+
+        if (alarm_config.count == alarm_config.num_retransmissions) {
+            break;
+        }
     }
-    printf("\n");
+    alarm(0);
+
+    if (!flag) {
+        return 4;
+    }
 
     transmitter_num = 1 - transmitter_num;
     return 0;

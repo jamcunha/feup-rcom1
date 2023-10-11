@@ -53,7 +53,6 @@ int llwrite(const unsigned char *buf, int bufSize) {
     return 0;
 }
 
-#include <stdio.h>
 int llread(unsigned char *packet) {
     if (role == LlTx) {
         return 1;
@@ -64,7 +63,6 @@ int llread(unsigned char *packet) {
     if ((size = receive_packet(data)) < 0) {
         return -1;
     }
-    printf("size: %d\n", size);
     memcpy(packet, data, size);
 
     // TODO

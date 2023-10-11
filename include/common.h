@@ -1,8 +1,6 @@
 #ifndef _COMMON_H_
 #define _COMMON_H_
 
-// maybe have a macro for RR, REJ and I
-
 #define FLAG            0x7E
 #define TX_ADDRESS      0x03
 #define RX_ADDRESS      0x01
@@ -13,6 +11,9 @@
 #define DISC_CONTROL    0x0B
 #define I_CONTROL(n)    ((1 << (6*n)) & 0x40)
 #define ESC             0x7D
+
+#define DATA_SIZE           1024
+#define STUFFED_DATA_SIZE   (DATA_SIZE * 2 + 2)
 
 #include <stdint.h>
 
@@ -29,11 +30,15 @@ typedef struct {
     int count;
     int timeout;
     int num_retransmissions;
-    void (*handler)(int signo); // probably not needed
 } alarm_t;
+
+// TODO: think about data holder here
 
 int send_supervision_frame(int fd, uint8_t address, uint8_t control);
 
-int read_supervision_frame(int fd, uint8_t address, uint8_t control);
+int read_supervision_frame(int fd, uint8_t address, uint8_t control, uint8_t* rej_byte);
+
+// maybe return data size
+int read_information_frame(int fd, uint8_t address, uint8_t control, uint8_t repeated_ctrl, uint8_t* data, int* data_size);
 
 #endif // _COMMON_H_
