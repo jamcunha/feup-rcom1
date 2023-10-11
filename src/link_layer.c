@@ -3,6 +3,7 @@
 #include "link_layer.h"
 
 #include <signal.h>
+#include <string.h>
 #include <unistd.h>
 
 #include "transmitter.h"
@@ -41,15 +42,34 @@ int llopen(LinkLayer connectionParameters) {
 }
 
 int llwrite(const unsigned char *buf, int bufSize) {
+    if (role == LlRx) {
+        return 1;
+    }
+
+    send_packet(buf, bufSize);
+
     // TODO
 
     return 0;
 }
 
+#include <stdio.h>
 int llread(unsigned char *packet) {
+    if (role == LlTx) {
+        return 1;
+    }
+
+    unsigned char data[256];
+    int size;
+    if ((size = receive_packet(data)) < 0) {
+        return -1;
+    }
+    printf("size: %d\n", size);
+    memcpy(packet, data, size);
+
     // TODO
 
-    return 0;
+    return size;
 }
 
 int llclose(int showStatistics) {

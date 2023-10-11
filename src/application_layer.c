@@ -30,6 +30,17 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
         fprintf(stderr, "Failed to establish connection\n");
         return;
     }
+    printf("Connection established\n");
+
+    // not supposed to send this but its for testing purposes
+    if (llwrite((unsigned char *) filename, strlen(filename)) == -1) {
+        fprintf(stderr, "Failed to send filename\n");
+        return;
+    }
+
+    int size;
+    unsigned char buf[256];
+    while ((size = llread(buf)) == -1) { }
 
     // (...)
 
@@ -37,4 +48,5 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
         fprintf(stderr, "Failed to close connection\n");
         return;
     }
+    printf("Connection closed\n");
 }

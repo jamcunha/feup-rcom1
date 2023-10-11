@@ -9,4 +9,6 @@ int connect_receptor();
 
 int disconnect_receptor();
 
+int receive_packet(unsigned char* packet);
+
 #endif // _EMISSOR_H_

@@ -8,13 +8,10 @@
 #define RX_ADDRESS      0x01
 #define SET_CONTROL     0x03
 #define UA_CONTROL      0x07
-#define RR0_CONTROL     0x05 // bit: 00000101
-#define RR1_CONTROL     0x85 // bit: 10000101
-#define REJ0_CONTROL    0x01 // bit: 00000001
-#define REJ1_CONTROL    0x81 // bit: 10000001
+#define RR_CONTROL(n)   ((1 << (7*n)) | 0x05 )
+#define REJ_CONTROL(n)  ((1 << (7*n)) | 0x01 )
 #define DISC_CONTROL    0x0B
-#define I0_CONTROL      0x00 // bit: 00000000
-#define I1_CONTROL      0x40 // bit: 01000000
+#define I_CONTROL(n)    ((1 << (6*n)) & 0x40)
 #define ESC             0x7D
 
 #include <stdint.h>
