@@ -28,7 +28,10 @@ int llopen(LinkLayer connectionParameters) {
             return -1;
         }
     } else if (connectionParameters.role == LlRx) {
-        if (open_receptor(connectionParameters.serialPort, connectionParameters.baudRate)) {
+        if (open_receptor(connectionParameters.serialPort,
+                    connectionParameters.baudRate,
+                    connectionParameters.timeout,
+                    connectionParameters.nRetransmissions)) {
             return -1;
         }
         role = LlRx;
