@@ -1,29 +1,79 @@
-#include "common.h"
+#include "frame_utils.h"
 
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
-// TODO: Refactor this to just build so that we can have a reusable alarm handler (using data holder)
-// TODO: make send and read for information frames
+struct data_holder_s data_holder;
 
-int send_supervision_frame(int fd, uint8_t address, uint8_t control) {
-    uint8_t* frame = malloc(5 * sizeof(uint8_t));
+size_t stuff_data(const uint8_t* data, size_t length, uint8_t bcc2, uint8_t* stuffed_data) {
+    size_t stuffed_length = 0;
 
-    frame[0] = FLAG;
-    frame[1] = address;
-    frame[2] = control;
-    frame[3] = address ^ control;
-    frame[4] = FLAG;
-
-    if (write(fd, frame, 5) != 5) {
-        return 1;
+    for (int i = 0; i < length; i++) {
+        if (data[i] == FLAG || data[i] == ESC) {
+            stuffed_data[stuffed_length++] = ESC;
+            stuffed_data[stuffed_length++] = data[i] ^ STUFF_XOR;
+        } else {
+            stuffed_data[stuffed_length++] = data[i];
+        }
     }
 
-    // Wait untill all bytes have been written to the serial port
-    sleep(1);
+    if (bcc2 == FLAG || bcc2 == ESC) {
+        stuffed_data[stuffed_length++] = ESC;
+        stuffed_data[stuffed_length++] = bcc2 ^ STUFF_XOR;
+    } else {
+        stuffed_data[stuffed_length++] = bcc2;
+    }
 
-    free(frame);
-    return 0;
+    return stuffed_length;
+}
+
+size_t destuff_data(const uint8_t* stuffed_data, size_t length, uint8_t* data, uint8_t* bcc2) {
+    uint8_t destuffed_data[DATA_SIZE + 1];
+    size_t idx = 0;
+
+    for (size_t i = 0; i < length; i++) {
+        if (stuffed_data[i] == ESC) {
+            i++;
+            destuffed_data[idx++] = stuffed_data[i] ^ STUFF_XOR;
+        } else {
+            destuffed_data[idx++] = stuffed_data[i];
+        }
+    }
+
+    *bcc2 = destuffed_data[idx - 1];
+
+    memcpy(data, destuffed_data, idx - 1);
+    return idx - 1;
+}
+
+void build_supervision_frame(int fd, uint8_t address, uint8_t control) {
+    data_holder.buffer[0] = FLAG;
+    data_holder.buffer[1] = address;
+    data_holder.buffer[2] = control;
+    data_holder.buffer[3] = address ^ control;
+    data_holder.buffer[4] = FLAG;
+
+    data_holder.length = 5;
+}
+
+void build_information_frame(int fd, uint8_t address, uint8_t control, const uint8_t* packet, size_t packet_length) {
+    uint8_t bcc2 = 0;
+    for (size_t i = 0; i < packet_length; i++) {
+        bcc2 ^= packet[i];
+    }
+
+    uint8_t stuffed_data[STUFFED_DATA_SIZE];
+    size_t stuffed_length = stuff_data(packet, packet_length, bcc2, stuffed_data);
+
+    memcpy(data_holder.buffer + 4, stuffed_data, stuffed_length);
+
+    data_holder.buffer[0] = FLAG;
+    data_holder.buffer[1] = address;
+    data_holder.buffer[2] = control;
+    data_holder.buffer[3] = address ^ control;
+    data_holder.buffer[4 + stuffed_length] = FLAG;
+    data_holder.length = 4 + stuffed_length + 1;
 }
 
 int read_supervision_frame(int fd, uint8_t address, uint8_t control, uint8_t* rej_ctrl) {
@@ -83,12 +133,13 @@ int read_supervision_frame(int fd, uint8_t address, uint8_t control, uint8_t* re
     return 0;
 }
 
-int read_information_frame(int fd, uint8_t address, uint8_t control, uint8_t repeated_ctrl, uint8_t* data, int* data_size) {
+int read_information_frame(int fd, uint8_t address, uint8_t control, uint8_t repeated_ctrl) {
     uint8_t byte;
     state_t state = START;
 
     uint8_t is_repeated;
-    *data_size = 0;
+    data_holder.length = 0;
+    memset(data_holder.buffer, 0, STUFFED_DATA_SIZE + 5);
 
     while (state != STOP) {
         if (read(fd, &byte, 1) != 1) {
@@ -131,7 +182,7 @@ int read_information_frame(int fd, uint8_t address, uint8_t control, uint8_t rep
                     return 1;
                 }
             } else {
-                data[(*data_size)++] = byte;
+                data_holder.buffer[data_holder.length++] = byte;
             }
         }
     }

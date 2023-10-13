@@ -2,40 +2,30 @@
 
 #include <fcntl.h>
 #include <string.h>
-#include <stdint.h>
 #include <stdlib.h>
 #include <termios.h>
 #include <unistd.h>
 
-#include "common.h"
+#include "frame_utils.h"
 
 struct {
     int fd;
     struct termios oldtio, newtio;
 } receptor;
 
+struct {
+    int count;
+    int timeout;
+    int num_retransmissions;
+} alarm_config;
+
 int receptor_num = 1;
 
-int destuff_data(const uint8_t* stuffed_data, size_t length, uint8_t* data, uint8_t* bcc2) {
-    uint8_t destuffed_data[DATA_SIZE + 1];
-    size_t idx = 0;
+int open_receptor(char* serial_port, int baudrate, int timeout, int nRetransmissions) {
+    alarm_config.count = 0;
+    alarm_config.timeout = timeout;
+    alarm_config.num_retransmissions = nRetransmissions;
 
-    for (size_t i = 0; i < length; i++) {
-        if (stuffed_data[i] == ESC) {
-            i++;
-            destuffed_data[idx++] = stuffed_data[i] ^ 0x20;
-        } else {
-            destuffed_data[idx++] = stuffed_data[i];
-        }
-    }
-
-    *bcc2 = destuffed_data[idx - 1];
-
-    memcpy(data, destuffed_data, idx - 1);
-    return idx - 1;
-}
-
-int open_receptor(char* serial_port, int baudrate) {
     receptor.fd = open(serial_port, O_RDWR | O_NOCTTY);
     if (receptor.fd < 0) {
         return 1;
@@ -74,10 +64,10 @@ int close_receptor() {
 }
 
 int connect_receptor() {
-    // ask teacher if receiver is supposed to wait forever
     while (read_supervision_frame(receptor.fd, TX_ADDRESS, SET_CONTROL, NULL) != 0) {}
 
-    if (send_supervision_frame(receptor.fd, RX_ADDRESS, UA_CONTROL)) {
+    build_supervision_frame(receptor.fd, RX_ADDRESS, UA_CONTROL);
+    if (write(receptor.fd, data_holder.buffer, data_holder.length) != data_holder.length) {
         return 1;
     }
 
@@ -87,7 +77,8 @@ int connect_receptor() {
 int disconnect_receptor() {
     while (read_supervision_frame(receptor.fd, TX_ADDRESS, DISC_CONTROL, NULL) != 0) {}
 
-    if (send_supervision_frame(receptor.fd, RX_ADDRESS, DISC_CONTROL)) {
+    build_supervision_frame(receptor.fd, RX_ADDRESS, DISC_CONTROL);
+    if (write(receptor.fd, data_holder.buffer, data_holder.length) != data_holder.length) {
         return 1;
     }
 
@@ -96,18 +87,19 @@ int disconnect_receptor() {
     return 0;
 }
 
-int receive_packet(unsigned char* packet) {
-    uint8_t stuffed_data[STUFFED_DATA_SIZE];
-    int stuffed_size = 0;
+int receive_packet(uint8_t* packet) {
+    if (read_information_frame(receptor.fd, TX_ADDRESS, I_CONTROL(1 - receptor_num), I_CONTROL(receptor_num)) != 0) {
+        build_supervision_frame(receptor.fd, RX_ADDRESS, RR_CONTROL(1 - receptor_num));
+        if (write(receptor.fd, data_holder.buffer, data_holder.length) != data_holder.length) {
+            return -1;
+        }
 
-    if (read_information_frame(receptor.fd, TX_ADDRESS, I_CONTROL(1 - receptor_num), I_CONTROL(receptor_num), stuffed_data, &stuffed_size) != 0) {
-        send_supervision_frame(receptor.fd, RX_ADDRESS, RR_CONTROL(1 - receptor_num));
         return 0;
     }
 
     uint8_t data[DATA_SIZE];
     uint8_t bcc2;
-    size_t data_size = destuff_data(stuffed_data, stuffed_size, data, &bcc2);
+    size_t data_size = destuff_data(data_holder.buffer, data_holder.length, data, &bcc2);
 
     uint8_t tmp_bcc2 = 0;
     for (size_t i = 0; i < data_size; i++) {
@@ -115,13 +107,20 @@ int receive_packet(unsigned char* packet) {
     }
 
     if (tmp_bcc2 != bcc2) {
-        send_supervision_frame(receptor.fd, RX_ADDRESS, REJ_CONTROL(1 - receptor_num));
+        build_supervision_frame(receptor.fd, RX_ADDRESS, REJ_CONTROL(1 - receptor_num));
+        if (write(receptor.fd, data_holder.buffer, data_holder.length) != data_holder.length) {
+            return -1;
+        }
+
         return 0;
     }
 
     memcpy(packet, data, data_size);
+    build_supervision_frame(receptor.fd, RX_ADDRESS, RR_CONTROL(receptor_num));
+    if (write(receptor.fd, data_holder.buffer, data_holder.length) != data_holder.length) {
+        return -1;
+    }
 
-    send_supervision_frame(receptor.fd, RX_ADDRESS, RR_CONTROL(receptor_num));
     receptor_num = 1 - receptor_num;
     return data_size;
 }
