@@ -38,8 +38,14 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
         return;
     }
 
+    if (llwrite((unsigned char *) filename, strlen(filename)) == -1) {
+        fprintf(stderr, "Failed to send filename\n");
+        return;
+    }
+
     int size;
     unsigned char buf[256];
+    while ((size = llread(buf)) == -1) { }
     while ((size = llread(buf)) == -1) { }
 
     // (...)

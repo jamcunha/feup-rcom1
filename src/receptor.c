@@ -13,19 +13,9 @@ struct {
     struct termios oldtio, newtio;
 } receptor;
 
-struct {
-    int count;
-    int timeout;
-    int num_retransmissions;
-} alarm_config;
-
 int receptor_num = 1;
 
-int open_receptor(char* serial_port, int baudrate, int timeout, int nRetransmissions) {
-    alarm_config.count = 0;
-    alarm_config.timeout = timeout;
-    alarm_config.num_retransmissions = nRetransmissions;
-
+int open_receptor(char* serial_port, int baudrate) {
     receptor.fd = open(serial_port, O_RDWR | O_NOCTTY);
     if (receptor.fd < 0) {
         return 1;

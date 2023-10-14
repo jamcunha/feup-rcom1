@@ -6,10 +6,10 @@
 #define RX_ADDRESS      0x01
 #define SET_CONTROL     0x03
 #define UA_CONTROL      0x07
-#define RR_CONTROL(n)   ((1 << (7*n)) | 0x05 )
-#define REJ_CONTROL(n)  ((1 << (7*n)) | 0x01 )
+#define RR_CONTROL(n)   ((n == 0) ? 0x05 : 0x85)
+#define REJ_CONTROL(n)  ((n == 0) ? 0x01 : 0x81)
 #define DISC_CONTROL    0x0B
-#define I_CONTROL(n)    ((1 << (6*n)) & 0x40)
+#define I_CONTROL(n)    ((n == 0) ? 0x00 : 0x40)
 #define ESC             0x7D
 #define STUFF_XOR       0x20
 

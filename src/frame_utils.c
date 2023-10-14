@@ -81,7 +81,6 @@ int read_supervision_frame(int fd, uint8_t address, uint8_t control, uint8_t* re
     state_t state = START;
 
     uint8_t is_rej;
-
     while (state != STOP) {
         if (read(fd, &byte, 1) != 1) {
             continue;
