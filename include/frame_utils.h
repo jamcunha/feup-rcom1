@@ -34,6 +34,12 @@ extern struct data_holder_s {
     size_t length;
 } data_holder;
 
+extern struct alarm_config_s {
+    int count;
+    int timeout;
+    int num_retransmissions;
+} alarm_config;
+
 size_t stuff_data(const uint8_t* data, size_t length, uint8_t bcc2, uint8_t* stuffed_data);
 
 size_t destuff_data(const uint8_t* stuffed_data, size_t length, uint8_t* data, uint8_t* bcc2);

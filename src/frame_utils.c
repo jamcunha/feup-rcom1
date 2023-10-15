@@ -5,6 +5,7 @@
 #include <unistd.h>
 
 struct data_holder_s data_holder;
+struct alarm_config_s alarm_config;
 
 size_t stuff_data(const uint8_t* data, size_t length, uint8_t bcc2, uint8_t* stuffed_data) {
     size_t stuffed_length = 0;
@@ -82,6 +83,9 @@ int read_supervision_frame(int fd, uint8_t address, uint8_t control, uint8_t* re
 
     uint8_t is_rej;
     while (state != STOP) {
+        if (alarm_config.count > alarm_config.num_retransmissions) {
+            return 1;
+        }
         if (read(fd, &byte, 1) != 1) {
             continue;
         }
@@ -120,7 +124,7 @@ int read_supervision_frame(int fd, uint8_t address, uint8_t control, uint8_t* re
         } else if (state == BCC_OK) {
             if (byte == FLAG) {
                 if (is_rej) {
-                    return 1;
+                    return 2;
                 }
                 state = STOP;
             } else {
@@ -141,6 +145,9 @@ int read_information_frame(int fd, uint8_t address, uint8_t control, uint8_t rep
     memset(data_holder.buffer, 0, STUFFED_DATA_SIZE + 5);
 
     while (state != STOP) {
+        if (alarm_config.count > alarm_config.num_retransmissions) {
+            return 1;
+        }
         if (read(fd, &byte, 1) != 1) {
             continue;
         }
@@ -178,7 +185,7 @@ int read_information_frame(int fd, uint8_t address, uint8_t control, uint8_t rep
             if (byte == FLAG) {
                 state = STOP;
                 if (is_repeated) {
-                    return 1;
+                    return 2;
                 }
             } else {
                 data_holder.buffer[data_holder.length++] = byte;

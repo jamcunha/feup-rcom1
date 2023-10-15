@@ -8,16 +8,12 @@
 
 #include "frame_utils.h"
 
+#include <stdio.h>
+
 struct {
     int fd;
     struct termios oldtio, newtio;
 } transmitter;
-
-struct {
-    int count;
-    int timeout;
-    int num_retransmissions;
-} alarm_config;
 
 int transmitter_num = 0;
 
@@ -27,6 +23,11 @@ void alarm_handler(int signo) {
         return ;
     }
     alarm(alarm_config.timeout);
+
+    // if alarm count is > than num_retransmissions,
+    // it will try to write one more time but it will fail
+    if (alarm_config.count <= alarm_config.num_retransmissions)
+        printf("Alarm #%d\n", alarm_config.count);
 }
 
 int open_transmitter(char* serial_port, int baudrate, int timeout, int nRetransmissions) {
@@ -80,27 +81,16 @@ int connect_trasmitter() {
     build_supervision_frame(transmitter.fd, TX_ADDRESS, SET_CONTROL);
 
     if (write(transmitter.fd, data_holder.buffer, data_holder.length) != data_holder.length) {
-        return 2;
+        return 1;
     }
     alarm(alarm_config.timeout);
 
-    int flag = 0;
-    for (;;) {
-        if (read_supervision_frame(transmitter.fd, RX_ADDRESS, UA_CONTROL, NULL) == 0) {
-            flag = 1;
-            break;
-        }
-
-        // Ask teacher if is 1st try + 3 alarm tries or 3 tries as a whole
-        if (alarm_config.count == alarm_config.num_retransmissions) {
-            break;
-        }
-    }
-    alarm(0);
-
-    if (!flag) {
+    // Ask teacher if is 1st try + 3 alarm tries or 3 tries as a whole
+    if (read_supervision_frame(transmitter.fd, RX_ADDRESS, UA_CONTROL, NULL) != 0) {
+        alarm(0);
         return 2;
     }
+    alarm(0);
     
     return 0;
 }
@@ -150,24 +140,12 @@ int send_packet(const uint8_t* packet, size_t length) {
     }
     alarm(alarm_config.timeout);
 
-    uint8_t flag = 0;
     uint8_t rej_ctrl = REJ_CONTROL(1 - transmitter_num);
-    for (;;) {
-        // infinite loop does not take into account alarms
-        if (read_supervision_frame(transmitter.fd, RX_ADDRESS, RR_CONTROL(1 - transmitter_num), &rej_ctrl) == 0) {
-            flag = 1;
-            break;
-        }
-
-        if (alarm_config.count == alarm_config.num_retransmissions) {
-            break;
-        }
-    }
-    alarm(0);
-
-    if (!flag) {
+    if (read_supervision_frame(transmitter.fd, RX_ADDRESS, RR_CONTROL(1 - transmitter_num), &rej_ctrl) != 0) {
+        alarm(0);
         return 2;
     }
+    alarm(0);
 
     transmitter_num = 1 - transmitter_num;
     return 0;
