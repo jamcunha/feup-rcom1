@@ -6,6 +6,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "frame_utils.h"
 #include "transmitter.h"
 #include "receptor.h"
 
@@ -66,7 +67,7 @@ int llread(unsigned char *packet) {
         return 1;
     }
 
-    unsigned char data[256];
+    unsigned char data[DATA_SIZE];
     int size;
     if ((size = receive_packet(data)) < 0) {
         return -1;
