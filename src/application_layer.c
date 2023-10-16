@@ -49,8 +49,6 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
 
     while ((size = llread(buf)) == -1) { }
 
-    // (...)
-
     if (llclose(0) == -1) {
         fprintf(stderr, "Failed to close connection\n");
         return;
