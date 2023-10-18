@@ -45,8 +45,12 @@ int open_receptor(char* serial_port, int baudrate) {
 }
 
 int close_receptor() {
-    if (tcsetattr(receptor.fd, TCSANOW, &receptor.oldtio) == -1) {
+    if (tcdrain(receptor.fd) == -1) {
         return 1;
+    }
+
+    if (tcsetattr(receptor.fd, TCSANOW, &receptor.oldtio) == -1) {
+        return 2;
     }
 
     close(receptor.fd);

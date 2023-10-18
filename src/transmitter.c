@@ -67,8 +67,12 @@ int open_transmitter(char* serial_port, int baudrate, int timeout, int nRetransm
 }
 
 int close_transmitter() {
-    if (tcsetattr(transmitter.fd, TCSANOW, &transmitter.oldtio) == -1) {
+    if (tcdrain(transmitter.fd) == -1) {
         return 1;
+    }
+
+    if (tcsetattr(transmitter.fd, TCSANOW, &transmitter.oldtio) == -1) {
+        return 2;
     }
 
     close(transmitter.fd);
@@ -99,12 +103,12 @@ int disconnect_trasmitter() {
     alarm_config.count = 0;
 
     build_supervision_frame(transmitter.fd, TX_ADDRESS, DISC_CONTROL);
-
     if (write(transmitter.fd, data_holder.buffer, data_holder.length) != data_holder.length) {
         return 1;
     }
     alarm(alarm_config.timeout);
 
+    // TODO: update this to new alarm handling
     int flag = 0;
     for (;;) {
         if (read_supervision_frame(transmitter.fd, RX_ADDRESS, DISC_CONTROL, NULL) == 0) {
@@ -123,7 +127,6 @@ int disconnect_trasmitter() {
     }
 
     build_supervision_frame(transmitter.fd, TX_ADDRESS, UA_CONTROL);
-
     if (write(transmitter.fd, data_holder.buffer, data_holder.length) != data_holder.length) {
         return 3;
     }
