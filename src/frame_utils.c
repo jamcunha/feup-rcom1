@@ -77,6 +77,33 @@ void build_information_frame(int fd, uint8_t address, uint8_t control, const uin
     data_holder.length = 4 + stuffed_length + 1;
 }
 
+int send_transmitter_frame(int fd, uint8_t control, const uint8_t* packet, size_t packet_length) {
+    alarm_config.count = 0;
+
+    if (packet == NULL) {
+        build_supervision_frame(fd, TX_ADDRESS, control);
+    } else {
+        build_information_frame(fd, TX_ADDRESS, control, packet, packet_length);
+    }
+
+    if (write(fd, data_holder.buffer, data_holder.length) != data_holder.length) {
+        return 1;
+    }
+    alarm(alarm_config.timeout);
+
+    return 0;
+}
+
+int send_receiver_frame(int fd, uint8_t control) {
+    build_supervision_frame(fd, RX_ADDRESS, control);
+
+    if (write(fd, data_holder.buffer, data_holder.length) != data_holder.length) {
+        return 1;
+    }
+
+    return 0;
+}
+
 int read_supervision_frame(int fd, uint8_t address, uint8_t control, uint8_t* rej_ctrl) {
     uint8_t byte;
     state_t state = START;

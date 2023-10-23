@@ -48,6 +48,10 @@ void build_supervision_frame(int fd, uint8_t address, uint8_t control);
 
 void build_information_frame(int fd, uint8_t address, uint8_t control, const uint8_t* packet, size_t packet_length);
 
+int send_transmitter_frame(int fd, uint8_t control, const uint8_t* packet, size_t packet_length);
+
+int send_receiver_frame(int fd, uint8_t control);
+
 int read_supervision_frame(int fd, uint8_t address, uint8_t control, uint8_t* rej_byte);
 
 int read_information_frame(int fd, uint8_t address, uint8_t control, uint8_t repeated_ctrl);

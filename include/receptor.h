@@ -5,7 +5,7 @@
 
 // TODO: add timeouts to receptor?
 
-int open_receptor(char* serial_port, int baudrate);
+int open_receptor(char* serial_port, int baudrate, int timeout, int nRetransmissions);
 
 int close_receptor();
 

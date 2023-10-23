@@ -10,8 +10,6 @@
 #include "transmitter.h"
 #include "receptor.h"
 
-#include <stdio.h>
-
 // MISC
 #define _POSIX_SOURCE 1 // POSIX compliant source
 
@@ -31,7 +29,10 @@ int llopen(LinkLayer connectionParameters) {
             return -1;
         }
     } else if (connectionParameters.role == LlRx) {
-        if (open_receptor(connectionParameters.serialPort, connectionParameters.baudRate)) {
+        if (open_receptor(connectionParameters.serialPort,
+                    connectionParameters.baudRate,
+                    connectionParameters.timeout,
+                    connectionParameters.nRetransmissions)) {
             return -1;
         }
         role = LlRx;
@@ -51,12 +52,6 @@ int llwrite(const unsigned char *buf, int bufSize) {
 
     if (send_packet(buf, bufSize)) {
         return -1;
-    } else {
-        printf("Sent packet: ");
-        for (int i = 0; i < bufSize; i++) {
-            printf("0x%02x ", buf[i]);
-        }
-        printf("\n");
     }
 
     return 0;
@@ -73,12 +68,6 @@ int llread(unsigned char *packet) {
         return -1;
     }
     memcpy(packet, data, size);
-
-    printf("Received packet: ");
-    for (int i = 0; i < size; i++) {
-        printf("0x%02x ", packet[i]);
-    }
-    printf("\n");
 
     return size;
 }
