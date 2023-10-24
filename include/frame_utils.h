@@ -32,6 +32,7 @@ extern struct data_holder_s {
     // +5 for other frame fields (address, control, bcc1, flag) 
     uint8_t buffer[STUFFED_DATA_SIZE + 5];
     size_t length;
+    int fd;
 } data_holder;
 
 extern struct alarm_config_s {
@@ -44,16 +45,16 @@ size_t stuff_data(const uint8_t* data, size_t length, uint8_t bcc2, uint8_t* stu
 
 size_t destuff_data(const uint8_t* stuffed_data, size_t length, uint8_t* data, uint8_t* bcc2);
 
-void build_supervision_frame(int fd, uint8_t address, uint8_t control);
+void build_supervision_frame(uint8_t address, uint8_t control);
 
-void build_information_frame(int fd, uint8_t address, uint8_t control, const uint8_t* packet, size_t packet_length);
+void build_information_frame(uint8_t address, uint8_t control, const uint8_t* packet, size_t packet_length);
 
-int send_transmitter_frame(int fd, uint8_t control, const uint8_t* packet, size_t packet_length);
+int send_transmitter_frame(uint8_t control, const uint8_t* packet, size_t packet_length);
 
-int send_receiver_frame(int fd, uint8_t control);
+int send_receiver_frame(uint8_t control);
 
-int read_supervision_frame(int fd, uint8_t address, uint8_t control, uint8_t* rej_byte);
+int read_supervision_frame(uint8_t address, uint8_t control, uint8_t* rej_byte);
 
-int read_information_frame(int fd, uint8_t address, uint8_t control, uint8_t repeated_ctrl);
+int read_information_frame(uint8_t address, uint8_t control, uint8_t repeated_ctrl);
 
 #endif // _FRAME_UTILS_H_

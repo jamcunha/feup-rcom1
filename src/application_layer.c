@@ -153,7 +153,6 @@ int receive_file(const char* filename) {
     uint8_t buf[MAX_PACKET_SIZE];
     size_t file_size;
 
-    // TODO: ask teacher if we should use args filename or filename from control packet
     char received_filename[0xff];
 
     if (read_control_packet(CONTROL_START, buf, &file_size, received_filename) == -1) {

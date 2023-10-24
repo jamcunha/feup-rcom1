@@ -11,16 +11,14 @@
 #include "frame_utils.h"
 
 struct {
-    int fd;
     struct termios oldtio, newtio;
 } receptor;
 
 int receptor_num = 1;
 
-// TODO: maybe add fd to data_holder
 void alarm_handler_receptor(int signo) {
     alarm_config.count++;
-    if (write(receptor.fd, data_holder.buffer, data_holder.length) != data_holder.length) {
+    if (write(data_holder.fd, data_holder.buffer, data_holder.length) != data_holder.length) {
         return;
     }
     alarm(alarm_config.timeout);
@@ -39,12 +37,12 @@ int open_receptor(char* serial_port, int baudrate, int timeout, int nRetransmiss
 
     (void)signal(SIGALRM, alarm_handler_receptor);
 
-    receptor.fd = open(serial_port, O_RDWR | O_NOCTTY);
-    if (receptor.fd < 0) {
+    data_holder.fd = open(serial_port, O_RDWR | O_NOCTTY);
+    if (data_holder.fd < 0) {
         return 1;
     }
 
-    if (tcgetattr(receptor.fd, &receptor.oldtio) == -1) {
+    if (tcgetattr(data_holder.fd, &receptor.newtio) == -1) {
         return 2;
     }
 
@@ -56,11 +54,11 @@ int open_receptor(char* serial_port, int baudrate, int timeout, int nRetransmiss
 
     receptor.newtio.c_lflag = 0;
     receptor.newtio.c_cc[VTIME] = 0;
-    receptor.newtio.c_cc[VMIN] = 0;
+    receptor.newtio.c_cc[VMIN] = 1;
 
-    tcflush(receptor.fd, TCIOFLUSH);
+    tcflush(data_holder.fd, TCIOFLUSH);
 
-    if (tcsetattr(receptor.fd, TCSANOW, &receptor.newtio) == -1) {
+    if (tcsetattr(data_holder.fd, TCSANOW, &receptor.newtio) == -1) {
         return 3;
     }
 
@@ -68,22 +66,22 @@ int open_receptor(char* serial_port, int baudrate, int timeout, int nRetransmiss
 }
 
 int close_receptor() {
-    if (tcdrain(receptor.fd) == -1) {
+    if (tcdrain(data_holder.fd) == -1) {
         return 1;
     }
 
-    if (tcsetattr(receptor.fd, TCSANOW, &receptor.oldtio) == -1) {
+    if (tcsetattr(data_holder.fd, TCSANOW, &receptor.newtio) == -1) {
         return 2;
     }
 
-    close(receptor.fd);
+    close(data_holder.fd);
     return 0;
 }
 
 int connect_receptor() {
-    while (read_supervision_frame(receptor.fd, TX_ADDRESS, SET_CONTROL, NULL) != 0) {}
+    while (read_supervision_frame(TX_ADDRESS, SET_CONTROL, NULL) != 0) {}
 
-    if (send_receiver_frame(receptor.fd, UA_CONTROL)) {
+    if (send_receiver_frame(UA_CONTROL)) {
         return 1;
     }
 
@@ -91,15 +89,15 @@ int connect_receptor() {
 }
 
 int disconnect_receptor() {
-    while (read_supervision_frame(receptor.fd, TX_ADDRESS, DISC_CONTROL, NULL) != 0) {}
+    while (read_supervision_frame(TX_ADDRESS, DISC_CONTROL, NULL) != 0) {}
 
-    if (send_transmitter_frame(receptor.fd, DISC_CONTROL, NULL, 0)) {
+    if (send_transmitter_frame(DISC_CONTROL, NULL, 0)) {
         return 1;
     }
 
     int res = -1;
     while (res != 0) {
-        res = read_supervision_frame(receptor.fd, RX_ADDRESS, UA_CONTROL, NULL);
+        res = read_supervision_frame(RX_ADDRESS, UA_CONTROL, NULL);
         if (res == 1) {
             break;
         }
@@ -114,8 +112,9 @@ int disconnect_receptor() {
 }
 
 int receive_packet(uint8_t* packet) {
-    if (read_information_frame(receptor.fd, TX_ADDRESS, I_CONTROL(1 - receptor_num), I_CONTROL(receptor_num)) != 0) {
-        if (send_receiver_frame(receptor.fd, RR_CONTROL(1 - receptor_num))) {
+    // TODO: PROBLEM HERE -> RETURNING 0 WITH CORRUPTED BYTES (and bcc2 is not catching it)
+    if (read_information_frame(TX_ADDRESS, I_CONTROL(1 - receptor_num), I_CONTROL(receptor_num)) != 0) {
+        if (send_receiver_frame(RR_CONTROL(1 - receptor_num))) {
             return -1;
         }
 
@@ -132,7 +131,7 @@ int receive_packet(uint8_t* packet) {
     }
 
     if (tmp_bcc2 != bcc2) {
-        if (send_receiver_frame(receptor.fd, REJ_CONTROL(1 - receptor_num))) {
+        if (send_receiver_frame(REJ_CONTROL(1 - receptor_num))) {
             return -1;
         }
 
@@ -140,7 +139,7 @@ int receive_packet(uint8_t* packet) {
     }
 
     memcpy(packet, data, data_size);
-    if (send_receiver_frame(receptor.fd, RR_CONTROL(receptor_num))) {
+    if (send_receiver_frame(RR_CONTROL(receptor_num))) {
         return -1;
     }
 

@@ -48,7 +48,7 @@ size_t destuff_data(const uint8_t* stuffed_data, size_t length, uint8_t* data, u
     return idx - 1;
 }
 
-void build_supervision_frame(int fd, uint8_t address, uint8_t control) {
+void build_supervision_frame(uint8_t address, uint8_t control) {
     data_holder.buffer[0] = FLAG;
     data_holder.buffer[1] = address;
     data_holder.buffer[2] = control;
@@ -58,7 +58,7 @@ void build_supervision_frame(int fd, uint8_t address, uint8_t control) {
     data_holder.length = 5;
 }
 
-void build_information_frame(int fd, uint8_t address, uint8_t control, const uint8_t* packet, size_t packet_length) {
+void build_information_frame(uint8_t address, uint8_t control, const uint8_t* packet, size_t packet_length) {
     uint8_t bcc2 = 0;
     for (size_t i = 0; i < packet_length; i++) {
         bcc2 ^= packet[i];
@@ -77,16 +77,16 @@ void build_information_frame(int fd, uint8_t address, uint8_t control, const uin
     data_holder.length = 4 + stuffed_length + 1;
 }
 
-int send_transmitter_frame(int fd, uint8_t control, const uint8_t* packet, size_t packet_length) {
+int send_transmitter_frame(uint8_t control, const uint8_t* packet, size_t packet_length) {
     alarm_config.count = 0;
 
     if (packet == NULL) {
-        build_supervision_frame(fd, TX_ADDRESS, control);
+        build_supervision_frame(TX_ADDRESS, control);
     } else {
-        build_information_frame(fd, TX_ADDRESS, control, packet, packet_length);
+        build_information_frame(TX_ADDRESS, control, packet, packet_length);
     }
 
-    if (write(fd, data_holder.buffer, data_holder.length) != data_holder.length) {
+    if (write(data_holder.fd, data_holder.buffer, data_holder.length) != data_holder.length) {
         return 1;
     }
     alarm(alarm_config.timeout);
@@ -94,17 +94,17 @@ int send_transmitter_frame(int fd, uint8_t control, const uint8_t* packet, size_
     return 0;
 }
 
-int send_receiver_frame(int fd, uint8_t control) {
-    build_supervision_frame(fd, RX_ADDRESS, control);
+int send_receiver_frame(uint8_t control) {
+    build_supervision_frame(RX_ADDRESS, control);
 
-    if (write(fd, data_holder.buffer, data_holder.length) != data_holder.length) {
+    if (write(data_holder.fd, data_holder.buffer, data_holder.length) != data_holder.length) {
         return 1;
     }
 
     return 0;
 }
 
-int read_supervision_frame(int fd, uint8_t address, uint8_t control, uint8_t* rej_ctrl) {
+int read_supervision_frame(uint8_t address, uint8_t control, uint8_t* rej_ctrl) {
     uint8_t byte;
     state_t state = START;
 
@@ -113,7 +113,7 @@ int read_supervision_frame(int fd, uint8_t address, uint8_t control, uint8_t* re
         if (alarm_config.count > alarm_config.num_retransmissions) {
             return 1;
         }
-        if (read(fd, &byte, 1) != 1) {
+        if (read(data_holder.fd, &byte, 1) != 1) {
             continue;
         }
         if (state == START) {
@@ -163,7 +163,8 @@ int read_supervision_frame(int fd, uint8_t address, uint8_t control, uint8_t* re
     return 0;
 }
 
-int read_information_frame(int fd, uint8_t address, uint8_t control, uint8_t repeated_ctrl) {
+#include <stdio.h>
+int read_information_frame(uint8_t address, uint8_t control, uint8_t repeated_ctrl) {
     uint8_t byte;
     state_t state = START;
 
@@ -175,7 +176,7 @@ int read_information_frame(int fd, uint8_t address, uint8_t control, uint8_t rep
         if (alarm_config.count > alarm_config.num_retransmissions) {
             return 1;
         }
-        if (read(fd, &byte, 1) != 1) {
+        if (read(data_holder.fd, &byte, 1) != 1) {
             continue;
         }
         if (state == START) {
@@ -216,6 +217,10 @@ int read_information_frame(int fd, uint8_t address, uint8_t control, uint8_t rep
                 }
             } else {
                 data_holder.buffer[data_holder.length++] = byte;
+                if (rand() % 200 == 0) {
+                    printf("corrupting byte\n");
+                    data_holder.buffer[data_holder.length - 1] = 0;
+                }
             }
         }
     }

@@ -11,7 +11,6 @@
 #include <stdio.h>
 
 struct {
-    int fd;
     struct termios oldtio, newtio;
 } transmitter;
 
@@ -19,7 +18,7 @@ int transmitter_num = 0;
 
 void alarm_handler_transmitter(int signo) {
     alarm_config.count++;
-    if (write(transmitter.fd, data_holder.buffer, data_holder.length) != data_holder.length) {
+    if (write(data_holder.fd, data_holder.buffer, data_holder.length) != data_holder.length) {
         return;
     }
     alarm(alarm_config.timeout);
@@ -38,13 +37,13 @@ int open_transmitter(char* serial_port, int baudrate, int timeout, int nRetransm
 
     (void)signal(SIGALRM, alarm_handler_transmitter);
 
-    transmitter.fd = open(serial_port, O_RDWR | O_NOCTTY);
+    data_holder.fd = open(serial_port, O_RDWR | O_NOCTTY);
 
-    if (transmitter.fd < 0) {
+    if (data_holder.fd < 0) {
         return 1;
     }
 
-    if (tcgetattr(transmitter.fd, &transmitter.oldtio) == -1) {
+    if (tcgetattr(data_holder.fd, &transmitter.oldtio) == -1) {
         return 2;
     }
 
@@ -58,9 +57,9 @@ int open_transmitter(char* serial_port, int baudrate, int timeout, int nRetransm
     transmitter.newtio.c_cc[VTIME] = 0;
     transmitter.newtio.c_cc[VMIN] = 0;
 
-    tcflush(transmitter.fd, TCIOFLUSH);
+    tcflush(data_holder.fd, TCIOFLUSH);
 
-    if (tcsetattr(transmitter.fd, TCSANOW, &transmitter.newtio) == -1) {
+    if (tcsetattr(data_holder.fd, TCSANOW, &transmitter.newtio) == -1) {
         return 3;
     }
 
@@ -68,24 +67,24 @@ int open_transmitter(char* serial_port, int baudrate, int timeout, int nRetransm
 }
 
 int close_transmitter() {
-    if (tcdrain(transmitter.fd) == -1) {
+    if (tcdrain(data_holder.fd) == -1) {
         return 1;
     }
 
-    if (tcsetattr(transmitter.fd, TCSANOW, &transmitter.oldtio) == -1) {
+    if (tcsetattr(data_holder.fd, TCSANOW, &transmitter.oldtio) == -1) {
         return 2;
     }
 
-    close(transmitter.fd);
+    close(data_holder.fd);
     return 0;
 }
 
 int connect_trasmitter() {
-    if (send_transmitter_frame(transmitter.fd, SET_CONTROL, NULL, 0)) {
+    if (send_transmitter_frame(SET_CONTROL, NULL, 0)) {
         return 1;
     }
 
-    if (read_supervision_frame(transmitter.fd, RX_ADDRESS, UA_CONTROL, NULL) != 0) {
+    if (read_supervision_frame(RX_ADDRESS, UA_CONTROL, NULL) != 0) {
         alarm(0);
         return 2;
     }
@@ -95,13 +94,13 @@ int connect_trasmitter() {
 }
 
 int disconnect_trasmitter() {
-    if (send_transmitter_frame(transmitter.fd, DISC_CONTROL, NULL, 0)) {
+    if (send_transmitter_frame(DISC_CONTROL, NULL, 0)) {
         return 1;
     }
 
     int res = -1;
     while (res != 0) {
-        res = read_supervision_frame(transmitter.fd, TX_ADDRESS, DISC_CONTROL, NULL);
+        res = read_supervision_frame(TX_ADDRESS, DISC_CONTROL, NULL);
         if (res == 1) {
             break;
         }
@@ -112,7 +111,7 @@ int disconnect_trasmitter() {
         return 2;
     }
 
-    if (send_receiver_frame(transmitter.fd, UA_CONTROL)) {
+    if (send_receiver_frame(UA_CONTROL)) {
         return 3;
     }
 
@@ -120,7 +119,7 @@ int disconnect_trasmitter() {
 }
 
 int send_packet(const uint8_t* packet, size_t length) {
-    if (send_transmitter_frame(transmitter.fd, I_CONTROL(transmitter_num), packet, length)) {
+    if (send_transmitter_frame(I_CONTROL(transmitter_num), packet, length)) {
         return 1;
     }
 
@@ -129,7 +128,7 @@ int send_packet(const uint8_t* packet, size_t length) {
 
     // if is REJ frame, it will try to send again
     while (res != 0) {
-        res = read_supervision_frame(transmitter.fd, RX_ADDRESS, RR_CONTROL(1 - transmitter_num), &rej_ctrl);
+        res = read_supervision_frame(RX_ADDRESS, RR_CONTROL(1 - transmitter_num), &rej_ctrl);
         if (res == 1) {
             // alarm count is > than num_retransmissions
             break;
