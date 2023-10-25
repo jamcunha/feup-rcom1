@@ -167,7 +167,11 @@ int receive_file(const char* filename) {
     }
 
     int size;
-    while ((size = llread(buf)) > 0) {
+    while ((size = llread(buf)) >= 0) {
+        if (size == 0) {
+            continue;
+        }
+
         if (buf[0] == CONTROL_END) {
             break;
         }

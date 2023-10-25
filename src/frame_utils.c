@@ -163,7 +163,6 @@ int read_supervision_frame(uint8_t address, uint8_t control, uint8_t* rej_ctrl) 
     return 0;
 }
 
-#include <stdio.h>
 int read_information_frame(uint8_t address, uint8_t control, uint8_t repeated_ctrl) {
     uint8_t byte;
     state_t state = START;
@@ -217,10 +216,6 @@ int read_information_frame(uint8_t address, uint8_t control, uint8_t repeated_ct
                 }
             } else {
                 data_holder.buffer[data_holder.length++] = byte;
-                if (rand() % 200 == 0) {
-                    printf("corrupting byte\n");
-                    data_holder.buffer[data_holder.length - 1] = 0;
-                }
             }
         }
     }

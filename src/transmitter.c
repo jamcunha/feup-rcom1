@@ -124,7 +124,7 @@ int send_packet(const uint8_t* packet, size_t length) {
     }
 
     int res = -1;
-    uint8_t rej_ctrl = REJ_CONTROL(1 - transmitter_num);
+    uint8_t rej_ctrl = REJ_CONTROL(transmitter_num);
 
     // if is REJ frame, it will try to send again
     while (res != 0) {
