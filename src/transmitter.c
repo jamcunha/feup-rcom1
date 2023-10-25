@@ -8,34 +8,18 @@
 
 #include "frame_utils.h"
 
-#include <stdio.h>
-
 struct {
     struct termios oldtio, newtio;
 } transmitter;
 
 int transmitter_num = 0;
 
-void alarm_handler_transmitter(int signo) {
-    alarm_config.count++;
-    if (write(data_holder.fd, data_holder.buffer, data_holder.length) != data_holder.length) {
-        return;
-    }
-    alarm(alarm_config.timeout);
-
-    // if alarm count is > than num_retransmissions,
-    // it will try to write one more time but it will fail
-    if (alarm_config.count <= alarm_config.num_retransmissions) {
-        printf("Alarm #%d\n", alarm_config.count);
-    }
-}
-
 int open_transmitter(char* serial_port, int baudrate, int timeout, int nRetransmissions) {
     alarm_config.count = 0;
     alarm_config.timeout = timeout;
     alarm_config.num_retransmissions = nRetransmissions;
 
-    (void)signal(SIGALRM, alarm_handler_transmitter);
+    (void)signal(SIGALRM, alarm_handler);
 
     data_holder.fd = open(serial_port, O_RDWR | O_NOCTTY);
 

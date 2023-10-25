@@ -1,11 +1,26 @@
 #include "frame_utils.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
 struct data_holder_s data_holder;
 struct alarm_config_s alarm_config;
+
+void alarm_handler(int signo) {
+    alarm_config.count++;
+    if (write(data_holder.fd, data_holder.buffer, data_holder.length) != data_holder.length) {
+        return;
+    }
+    alarm(alarm_config.timeout);
+
+    // if alarm count is > than num_retransmissions,
+    // it will try to write one more time but it will fail
+    if (alarm_config.count <= alarm_config.num_retransmissions) {
+        printf("Alarm #%d\n", alarm_config.count);
+    }
+}
 
 size_t stuff_data(const uint8_t* data, size_t length, uint8_t bcc2, uint8_t* stuffed_data) {
     size_t stuffed_length = 0;

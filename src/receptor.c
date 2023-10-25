@@ -3,7 +3,6 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <string.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <termios.h>
 #include <unistd.h>
@@ -16,26 +15,12 @@ struct {
 
 int receptor_num = 1;
 
-void alarm_handler_receptor(int signo) {
-    alarm_config.count++;
-    if (write(data_holder.fd, data_holder.buffer, data_holder.length) != data_holder.length) {
-        return;
-    }
-    alarm(alarm_config.timeout);
-
-    // if alarm count is > than num_retransmissions,
-    // it will try to write one more time but it will fail
-    if (alarm_config.count <= alarm_config.num_retransmissions) {
-        printf("Alarm #%d\n", alarm_config.count);
-    }
-}
-
 int open_receptor(char* serial_port, int baudrate, int timeout, int nRetransmissions) {
     alarm_config.count = 0;
     alarm_config.timeout = timeout;
     alarm_config.num_retransmissions = nRetransmissions;
 
-    (void)signal(SIGALRM, alarm_handler_receptor);
+    (void)signal(SIGALRM, alarm_handler);
 
     data_holder.fd = open(serial_port, O_RDWR | O_NOCTTY);
     if (data_holder.fd < 0) {
@@ -112,7 +97,6 @@ int disconnect_receptor() {
 }
 
 int receive_packet(uint8_t* packet) {
-    // TODO: PROBLEM HERE -> RETURNING 0 WITH CORRUPTED BYTES (and bcc2 is not catching it)
     if (read_information_frame(TX_ADDRESS, I_CONTROL(1 - receptor_num), I_CONTROL(receptor_num)) != 0) {
         if (send_receiver_frame(RR_CONTROL(1 - receptor_num))) {
             return -1;
