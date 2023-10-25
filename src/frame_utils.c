@@ -183,8 +183,6 @@ int read_information_frame(uint8_t address, uint8_t control, uint8_t repeated_ct
     state_t state = START;
 
     uint8_t is_repeated;
-    data_holder.length = 0;
-    memset(data_holder.buffer, 0, STUFFED_DATA_SIZE + 5);
 
     while (state != STOP) {
         if (alarm_config.count > alarm_config.num_retransmissions) {
@@ -198,6 +196,9 @@ int read_information_frame(uint8_t address, uint8_t control, uint8_t repeated_ct
                 state = FLAG_RCV;
             }
         } else if (state == FLAG_RCV) {
+            // add to report
+            data_holder.length = 0;
+
             is_repeated = 0;
             if (byte == address) {
                 state = A_RCV;
