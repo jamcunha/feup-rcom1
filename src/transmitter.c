@@ -113,16 +113,21 @@ int send_packet(const uint8_t* packet, size_t length) {
     // if is REJ frame, it will try to send again
     while (res != 0) {
         res = read_supervision_frame(RX_ADDRESS, RR_CONTROL(1 - transmitter_num), &rej_ctrl);
-        if (res == 1) {
-            // alarm count is > than num_retransmissions
+        if (res != 2) {
+            // alarm count is > than num_retransmissions or received RR frame
             break;
         }
+        stats.total_packets++;
+        stats.rejected_packets++;
     }
     alarm(0);
 
     if (res == 1) {
         return 2;
     }
+
+    stats.total_packets++;
+    stats.accepted_packets++;
 
     transmitter_num = 1 - transmitter_num;
     return 0;

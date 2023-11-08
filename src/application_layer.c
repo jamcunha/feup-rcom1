@@ -237,7 +237,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
         printf("File received\n");
     }
 
-    if (llclose(0) == -1) {
+    if (llclose(1) == -1) {
         fprintf(stderr, "Failed to close connection\n");
         return;
     }

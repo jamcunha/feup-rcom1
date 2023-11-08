@@ -41,6 +41,12 @@ extern struct alarm_config_s {
     int num_retransmissions;
 } alarm_config;
 
+extern struct stats_s {
+    int total_packets;
+    int accepted_packets;
+    int rejected_packets;
+} stats;
+
 void alarm_handler(int signo);
 
 size_t stuff_data(const uint8_t* data, size_t length, uint8_t bcc2, uint8_t* stuffed_data);

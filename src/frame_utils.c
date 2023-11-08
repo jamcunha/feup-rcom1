@@ -7,6 +7,7 @@
 
 struct data_holder_s data_holder;
 struct alarm_config_s alarm_config;
+struct stats_s stats;
 
 void alarm_handler(int signo) {
     alarm_config.count++;

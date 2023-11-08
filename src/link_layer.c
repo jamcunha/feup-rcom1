@@ -3,6 +3,7 @@
 #include "link_layer.h"
 
 #include <signal.h>
+#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -41,6 +42,10 @@ int llopen(LinkLayer connectionParameters) {
             return -1;
         }
     }
+
+    stats.total_packets = 0;
+    stats.accepted_packets = 0;
+    stats.rejected_packets = 0;
 
     return 1;
 }
@@ -91,6 +96,20 @@ int llclose(int showStatistics) {
         if (close_receptor()) {
             return -1;
         }
+    }
+
+    if (showStatistics) {
+        printf("\n");
+        printf("------------------------ STATISTICS ------------------------\n");
+        printf("Total packets: %d\n", stats.total_packets);
+        printf("\n");
+        printf("Accepted packets: %d\n", stats.accepted_packets);
+        printf("Rejected packets: %d\n", stats.rejected_packets);
+        printf("\n");
+        printf("Accepted percentage: %.2f%%\n", (float) stats.accepted_packets / stats.total_packets * 100);
+        printf("Rejected percentage: %.2f%%\n", (float) stats.rejected_packets / stats.total_packets * 100);
+        printf("------------------------------------------------------------\n");
+        printf("\n");
     }
 
     return 1;

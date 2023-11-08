@@ -105,6 +105,8 @@ int receive_packet(uint8_t* packet) {
         return 0;
     }
 
+    stats.total_packets++;
+
     uint8_t data[DATA_SIZE];
     uint8_t bcc2;
     size_t data_size = destuff_data(data_holder.buffer, data_holder.length, data, &bcc2);
@@ -119,6 +121,7 @@ int receive_packet(uint8_t* packet) {
             return -1;
         }
 
+        stats.rejected_packets++;
         return 0;
     }
 
@@ -126,6 +129,7 @@ int receive_packet(uint8_t* packet) {
     if (send_receiver_frame(RR_CONTROL(receptor_num))) {
         return -1;
     }
+    stats.accepted_packets++;
 
     receptor_num = 1 - receptor_num;
     return data_size;
