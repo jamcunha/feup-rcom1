@@ -184,6 +184,10 @@ int read_information_frame(uint8_t address, uint8_t control, uint8_t repeated_ct
 
     uint8_t is_repeated;
 
+    // removed because it is not necessary after the change
+    // data_holder.length = 0;
+    // memset(data_holder.buffer, 0, STUFFED_DATA_SIZE + 5);
+
     while (state != STOP) {
         if (alarm_config.count > alarm_config.num_retransmissions) {
             return 1;
@@ -196,7 +200,7 @@ int read_information_frame(uint8_t address, uint8_t control, uint8_t repeated_ct
                 state = FLAG_RCV;
             }
         } else if (state == FLAG_RCV) {
-            // add to report
+            // changed in presentation
             data_holder.length = 0;
 
             is_repeated = 0;
