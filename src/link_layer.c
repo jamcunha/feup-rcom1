@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <time.h>
 
 #include "frame_utils.h"
 #include "transmitter.h"
@@ -15,6 +16,8 @@
 #define _POSIX_SOURCE 1 // POSIX compliant source
 
 LinkLayerRole role;
+
+time_t start_time, end_time;
 
 int llopen(LinkLayer connectionParameters) {
     if (connectionParameters.role == LlTx) {
@@ -47,6 +50,7 @@ int llopen(LinkLayer connectionParameters) {
     stats.accepted_packets = 0;
     stats.rejected_packets = 0;
 
+    start_time = time(NULL);
     return 1;
 }
 
@@ -78,7 +82,7 @@ int llread(unsigned char *packet) {
 }
 
 int llclose(int showStatistics) {
-    // TODO find what is the statistics
+    end_time = time(NULL);
 
     if (role == LlTx) {
         if (disconnect_trasmitter()) {
@@ -108,6 +112,8 @@ int llclose(int showStatistics) {
         printf("\n");
         printf("Accepted percentage: %.2f%%\n", (float) stats.accepted_packets / stats.total_packets * 100);
         printf("Rejected percentage: %.2f%%\n", (float) stats.rejected_packets / stats.total_packets * 100);
+        printf("------------------------------------------------------------\n");
+        printf("Time elapsed: %.2lf seconds\n", difftime(end_time, start_time));
         printf("------------------------------------------------------------\n");
         printf("\n");
     }
