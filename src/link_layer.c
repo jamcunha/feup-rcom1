@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include <time.h>
+#include <sys/time.h>
 
 #include "frame_utils.h"
 #include "transmitter.h"
@@ -17,7 +17,7 @@
 
 LinkLayerRole role;
 
-time_t start_time, end_time;
+struct timeval start_time, end_time;
 
 int llopen(LinkLayer connectionParameters) {
     if (connectionParameters.role == LlTx) {
@@ -50,7 +50,7 @@ int llopen(LinkLayer connectionParameters) {
     stats.accepted_packets = 0;
     stats.rejected_packets = 0;
 
-    start_time = time(NULL);
+    gettimeofday(&start_time, NULL);
     return 1;
 }
 
@@ -82,7 +82,7 @@ int llread(unsigned char *packet) {
 }
 
 int llclose(int showStatistics) {
-    end_time = time(NULL);
+    gettimeofday(&end_time, NULL);
 
     if (role == LlTx) {
         if (disconnect_trasmitter()) {
@@ -103,6 +103,10 @@ int llclose(int showStatistics) {
     }
 
     if (showStatistics) {
+        long elapsed_sec = end_time.tv_sec - start_time.tv_sec;
+        long elapsed_usec = end_time.tv_usec - start_time.tv_usec;
+        double elapsed_time = elapsed_sec + elapsed_usec / 10000000.0;
+
         printf("\n");
         printf("------------------------ STATISTICS ------------------------\n");
         printf("Total packets: %d\n", stats.total_packets);
@@ -113,7 +117,7 @@ int llclose(int showStatistics) {
         printf("Accepted percentage: %.2f%%\n", (float) stats.accepted_packets / stats.total_packets * 100);
         printf("Rejected percentage: %.2f%%\n", (float) stats.rejected_packets / stats.total_packets * 100);
         printf("------------------------------------------------------------\n");
-        printf("Time elapsed: %.2lf seconds\n", difftime(end_time, start_time));
+        printf("Total time: %lf seconds\n", elapsed_time);
         printf("------------------------------------------------------------\n");
         printf("\n");
     }
